@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Pretty Little Reader QOTW</title>
+
+<style>
+body {
+  margin: 0;
+  padding: 20px;
+  color: #ffe6e6;
+  font-family: 'Georgia', serif;
+  overflow-x: hidden;
+
+  background: linear-gradient(270deg, #000000, #2b0000, #660000, #1a0000, #000000);
+  background-size: 800% 800%;
+  animation: rippleBG 35s ease infinite;
+}
+
+@keyframes rippleBG {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Smoke */
+body::before {
+  content: "";
+  position: fixed;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255,0,0,0.08) 0%, transparent 70%);
+  animation: smokeMove 60s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes smokeMove {
+  0% { transform: translate(0,0) scale(1); }
+  50% { transform: translate(-10%, -10%) scale(1.2); }
+  100% { transform: translate(0,0) scale(1); }
+}
+
+/* Embers */
+.embers {
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.ember {
+  position: absolute;
+  width: 8px;
+  height: 12px;
+  background: radial-gradient(circle at 30% 30%, #ff4d4d, #800000);
+  border-radius: 50%;
+  opacity: 0.7;
+  animation: fall linear infinite;
+}
+
+@keyframes fall {
+  0% { transform: translateY(-10vh); opacity: 0; }
+  10% { opacity: 1; }
+  100% { transform: translateY(110vh) translateX(40px); opacity: 0; }
+}
+
+/* Title */
+h1 {
+  text-align: center;
+  color: #ff4d4d;
+  text-shadow: 0 0 15px rgba(255,0,0,0.8);
+}
+
+/* Container */
+.container {
+  max-width: 600px;
+  margin: auto;
+  background: rgba(0,0,0,0.8);
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 0 30px rgba(255,0,0,0.5);
+}
+
+/* Question */
+.question {
+  margin-bottom: 30px;
+  font-size: 18px;
+}
+
+/* Answers */
+.answers label {
+  display: block;
+  margin: 10px 0;
+  cursor: pointer;
+  color: #ffd6d6;
+}
+
+/* Button */
+button {
+  background: #990000;
+  color: white;
+  border: none;
+  padding: 12px;
+  font-size: 16px;
+  cursor: pointer;
+  border-radius: 6px;
+  width: 100%;
+  box-shadow: 0 0 10px rgba(255,0,0,0.6);
+}
+
+button:hover {
+  background: #ff1a1a;
+}
+
+/* Popup base */
+#popupOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.9);
+  display: none;
+  justify-content: center;
+  align-items: center;
+}
+
+#popupBox {
+  background: #1a0000;
+  padding: 30px;
+  border-radius: 12px;
+  text-align: center;
+  box-shadow: 0 0 25px rgba(255,0,0,0.7);
+}
+
+/* Name popup */
+#nameOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.95);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10;
+}
+
+#nameBox {
+  background: #1a0000;
+  padding: 30px;
+  border-radius: 12px;
+  text-align: center;
+  box-shadow: 0 0 25px rgba(255,0,0,0.7);
+}
+
+#nameInput {
+  width: 100%;
+  padding: 12px;
+  margin-top: 15px;
+  border-radius: 6px;
+  border: none;
+  background: #330000;
+  color: #fff;
+}
+
+.blur {
+  filter: blur(6px);
+}
+</style>
+</head>
+
+<body>
+
+<div class="embers" id="embers"></div>
+
+<h1 id="title">📚 PLR Blurb of the Week 📚</h1>
+
+<div class="container" id="mainContent">
+  <form id="quizForm"></form>
+  <button onclick="submitQuiz()">Submit Answer</button>
+</div>
+
+<!-- NAME POPUP -->
+<div id="nameOverlay">
+  <div id="nameBox">
+    <h2>Enter Your Name</h2>
+    <input type="text" id="nameInput" placeholder="Your name...">
+    <br><br>
+    <button onclick="saveName()">Start</button>
+  </div>
+</div>
+
+<!-- RESULT POPUP -->
+<div id="popupOverlay">
+  <div id="popupBox">
+    <div id="popupResult"></div>
+  </div>
+</div>
+
+<script>
+
+let userName = "";
+
+// Questions
+const questionBank = [
+{question:"A dystopian society forces children to fight to the death in televised games, where survival depends on strategy, alliances, and a spark of rebellion.",answers:[
+{text:"Divergent",score:0},
+{text:"The Maze Runner",score:0},
+{text:"The Hunger Games",score:1},
+{text:"Battle Royale",score:0}]},
+
+{question:"A young wizard discovers his magical heritage and attends a school of witchcraft, where friendship and courage are tested against a dark force.",answers:[
+{text:"Percy Jackson & The Olympians",score:0},
+{text:"Harry Potter and the Sorcerer’s Stone",score:1},
+{text:"The Magicians",score:0},
+{text:"Eragon",score:0}]},
+
+{question:"A love story unfolds aboard a doomed ocean liner, blending class conflict, passion, and tragedy on its maiden voyage.",answers:[
+{text:"The Great Gatsby",score:0},
+{text:"Titanic: A Novel",score:0},
+{text:"A Night to Remember",score:0},
+{text:"Titanic",score:1}]},
+
+{question:"A mysterious millionaire throws lavish parties in hopes of rekindling a lost love, all seen through the eyes of a curious neighbor.",answers:[
+{text:"The Sun Also Rises",score:0},
+{text:"The Great Gatsby",score:1},
+{text:"This Side of Paradise",score:0},
+{text:"Tender Is the Night",score:0}]},
+
+{question:"A young woman navigates a rigid society, balancing independence, family pressure, and an unexpected romance with a proud gentleman.",answers:[
+{text:"Jane Eyre",score:0},
+{text:"Sense and Sensibility",score:0},
+{text:"Pride and Prejudice",score:1},
+{text:"Emma",score:0}]},
+
+{question:"A group of strangers stranded on an island descends into chaos as their attempt at civilization unravels into savagery.",answers:[
+{text:"Life of Pi",score:0},
+{text:"The Beach",score:0},
+{text:"Lord of the Flies",score:1},
+{text:"Cast Away",score:0}]},
+
+{question:"A man awakens to find himself transformed into a giant insect, forcing him and his family to confront alienation and identity.",answers:[
+{text:"Metamorphosis",score:1},
+{text:"The Trial",score:0},
+{text:"Frankenstein",score:0},
+{text:"Dracula",score:0}]},
+
+{question:"A post-apocalyptic journey follows a father and son as they struggle to survive in a bleak, ash-covered world.",answers:[
+{text:"The Stand",score:0},
+{text:"The Road",score:1},
+{text:"Station Eleven",score:0},
+{text:"I Am Legend",score:0}]},
+
+{question:"A detective with keen observation skills solves baffling mysteries alongside his loyal companion in Victorian London.",answers:[
+{text:"Hercule Poirot Stories",score:0},
+{text:"Sherlock Holmes",score:1},
+{text:"Miss Marple Mysteries",score:0},
+{text:"The Alienist",score:0}]},
+
+{question:"A young girl falls through a rabbit hole into a bizarre world filled with peculiar creatures and nonsensical adventures.",answers:[
+{text:"Peter Pan",score:0},
+{text:"The Wizard of Oz",score:0},
+{text:"Alice in Wonderland",score:1},
+{text:"Coraline",score:0}]},
+
+{question:"A scholar obsessed with revenge manipulates lives from the shadows after being wrongly imprisoned, using wealth and disguise to orchestrate justice.",answers:[
+{text:"Les Misérables",score:0},
+{text:"The Count of Monte Cristo",score:1},
+{text:"Don Quixote",score:0},
+{text:"The Three Musketeers",score:0}]},
+
+{question:"A seemingly perfect suburban family hides unsettling truths, revealed through alternating perspectives and a missing wife.",answers:[
+{text:"The Girl on the Train",score:0},
+{text:"Big Little Lies",score:0},
+{text:"Gone Girl",score:1},
+{text:"Sharp Objects",score:0}]},
+
+{question:"A man recalls his complicated relationship with a wealthy friend whose life seems both enviable and hollow.",answers:[
+{text:"Brideshead Revisited",score:0},
+{text:"The Secret History",score:0},
+{text:"The Great Gatsby",score:1},
+{text:"A Separate Peace",score:0}]},
+
+{question:"A child with extraordinary intelligence struggles to find belonging in a world that underestimates her.",answers:[
+{text:"Anne of Green Gables",score:0},
+{text:"Matilda",score:1},
+{text:"The Goldfinch",score:0},
+{text:"Little Women",score:0}]},
+
+{question:"A man becomes entangled in a bureaucratic nightmare where he is accused of a crime that is never explained.",answers:[
+{text:"1984",score:0},
+{text:"The Trial",score:1},
+{text:"Catch-22",score:0},
+{text:"Brave New World",score:0}]},
+
+{question:"A group of academics becomes dangerously obsessed with beauty, morality, and a secret that binds them together.",answers:[
+{text:"If We Were Villains",score:0},
+{text:"The Secret History",score:1},
+{text:"Dead Poets Society",score:0},
+{text:"The Goldfinch",score:0}]},
+
+{question:"A woman begins to question her sanity while confined to a room, becoming fixated on the patterns around her.",answers:[
+{text:"Rebecca",score:0},
+{text:"The Yellow Wallpaper",score:1},
+{text:"Jane Eyre",score:0},
+{text:"The Bell Jar",score:0}]},
+
+{question:"A man searches for meaning and connection after his life is shattered by an inexplicable act of violence.",answers:[
+{text:"Extremely Loud & Incredibly Close",score:1},
+{text:"The Road",score:0},
+{text:"A Little Life",score:0},
+{text:"Room",score:0}]},
+
+{question:"A girl forms a bond with a misunderstood creature while navigating prejudice and isolation.",answers:[
+{text:"Frankenstein",score:0},
+{text:"Where the Crawdads Sing",score:1},
+{text:"The Shape of Water",score:0},
+{text:"Jane Eyre",score:0}]},
+
+{question:"A soldier struggles to reconcile absurdity and survival during wartime, where logic seems meaningless.",answers:[
+{text:"Slaughterhouse-Five",score:0},
+{text:"Catch-22",score:1},
+{text:"All Quiet on the Western Front",score:0},
+{text:"The Things They Carried",score:0}]},
+
+{question:"A man’s transformation into something monstrous forces his family to confront their own humanity.",answers:[
+{text:"The Metamorphosis",score:1},
+{text:"Frankenstein",score:0},
+{text:"Dracula",score:0},
+{text:"The Strange Case of Dr. Jekyll and Mr. Hyde",score:0}]},
+
+{question:"A woman returns to a grand estate overshadowed by the memory of its former mistress.",answers:[
+{text:"Jane Eyre",score:0},
+{text:"Rebecca",score:1},
+{text:"Wuthering Heights",score:0},
+{text:"The Haunting of Hill House",score:0}]},
+
+{question:"A boy befriends a reclusive neighbor, uncovering truths about kindness and prejudice in a small town.",answers:[
+{text:"To Kill a Mockingbird",score:1},
+{text:"The Help",score:0},
+{text:"A Tree Grows in Brooklyn",score:0},
+{text:"Of Mice and Men",score:0}]},
+
+{question:"A young man becomes disillusioned with society after being expelled and wandering through a city alone.",answers:[
+{text:"On the Road",score:0},
+{text:"The Catcher in the Rye",score:1},
+{text:"Less Than Zero",score:0},
+{text:"The Bell Jar",score:0}]},
+
+{question:"A scientist discovers a way to split his darker impulses from his outward persona—with terrifying results.",answers:[
+{text:"Dracula",score:0},
+{text:"Frankenstein",score:0},
+{text:"Dr. Jekyll and Mr. Hyde",score:1},
+{text:"The Invisible Man",score:0}]},
+
+{question:"A young orphan rises through hardship but struggles with love, independence, and morality.",answers:[
+{text:"Jane Eyre",score:1},
+{text:"Oliver Twist",score:0},
+{text:"Great Expectations",score:0},
+{text:"Little Women",score:0}]},
+
+{question:"A family’s summer vacation spirals into chaos as underlying tensions come to the surface.",answers:[
+{text:"The Vacationers",score:1},
+{text:"Big Little Lies",score:0},
+{text:"The Corrections",score:0},
+{text:"Little Fires Everywhere",score:0}]},
+
+{question:"A mysterious illness causes blindness, collapsing society into chaos and revealing human nature.",answers:[
+{text:"Station Eleven",score:0},
+{text:"Blindness",score:1},
+{text:"The Road",score:0},
+{text:"The Stand",score:0}]},
+
+{question:"A boy wizard faces increasingly dark challenges as he grows older and confronts destiny.",answers:[
+{text:"Harry Potter and the Goblet of Fire",score:0},
+{text:"Harry Potter and the Deathly Hallows",score:1},
+{text:"The Name of the Wind",score:0},
+{text:"Eragon",score:0}]},
+
+{question:"A woman reinvents herself in high society, hiding her past while chasing security and belonging.",answers:[
+{text:"Vanity Fair",score:0},
+{text:"The Age of Innocence",score:0},
+{text:"The House of Mirth",score:0},
+{text:"The Great Gatsby",score:1}]},
+
+{question:"A boy and his unusual companion embark on a surreal journey through a war-torn land.",answers:[
+{text:"Life of Pi",score:0},
+{text:"The Little Prince",score:1},
+{text:"Watership Down",score:0},
+{text:"The Alchemist",score:0}]},
+
+{question:"A group of children discovers a magical world where they must confront evil and fulfill a prophecy.",answers:[
+{text:"The Golden Compass",score:0},
+{text:"The Lion, the Witch and the Wardrobe",score:1},
+{text:"Eragon",score:0},
+{text:"Percy Jackson",score:0}]},
+
+{question:"A man documents the unraveling of his mental state while isolated and consumed by obsession.",answers:[
+{text:"The Bell Jar",score:0},
+{text:"Notes from Underground",score:1},
+{text:"Crime and Punishment",score:0},
+{text:"The Yellow Wallpaper",score:0}]},
+
+{question:"A young girl’s coming-of-age is shaped by loss, art, and a single traumatic event.",answers:[
+{text:"The Goldfinch",score:1},
+{text:"A Little Life",score:0},
+{text:"The Secret History",score:0},
+{text:"Normal People",score:0}]},
+
+{question:"A man commits a crime and spirals into guilt, paranoia, and philosophical torment.",answers:[
+{text:"Crime and Punishment",score:1},
+{text:"The Stranger",score:0},
+{text:"The Trial",score:0},
+{text:"Notes from Underground",score:0}]},
+
+{question:"A society is built on the suppression of emotion, where one boy begins to see color and truth.",answers:[
+{text:"Divergent",score:0},
+{text:"The Giver",score:1},
+{text:"1984",score:0},
+{text:"Brave New World",score:0}]},
+
+{question:"A reclusive man forms an unlikely bond with a child, challenging both of their isolated lives.",answers:[
+{text:"A Man Called Ove",score:1},
+{text:"The Road",score:0},
+{text:"About a Boy",score:0},
+{text:"Eleanor Oliphant Is Completely Fine",score:0}]},
+
+{question:"A man drifts through life detached from emotion, ultimately committing a shocking act.",answers:[
+{text:"The Stranger",score:1},
+{text:"Crime and Punishment",score:0},
+{text:"The Trial",score:0},
+{text:"No Exit",score:0}]},
+
+{question:"A young woman becomes entangled in a wealthy family’s secrets during a summer job.",answers:[
+{text:"We Were Liars",score:1},
+{text:"The Inheritance Games",score:0},
+{text:"The Summer I Turned Pretty",score:0},
+{text:"Big Little Lies",score:0}]},
+
+{question:"A ship captain becomes dangerously obsessed with capturing a creature that symbolizes his fate.",answers:[
+{text:"Twenty Thousand Leagues Under the Sea",score:0},
+{text:"Moby-Dick",score:1},
+{text:"The Old Man and the Sea",score:0},
+{text:"Life of Pi",score:0}]},
+
+{question:"A young man navigates privilege, addiction, and identity in a sprawling modern epic.",answers:[
+{text:"Less Than Zero",score:0},
+{text:"The Goldfinch",score:1},
+{text:"A Little Life",score:0},
+{text:"On the Road",score:0}]},
+
+{question:"A marriage unravels under the weight of secrets, betrayal, and conflicting narratives.",answers:[
+{text:"Gone Girl",score:1},
+{text:"The Silent Patient",score:0},
+{text:"Big Little Lies",score:0},
+{text:"The Girl on the Train",score:0}]},
+
+{question:"A man attempts to impose order on his life through rigid routines, only to be disrupted by others.",answers:[
+{text:"Eleanor Oliphant Is Completely Fine",score:0},
+{text:"A Man Called Ove",score:1},
+{text:"The Rosie Project",score:0},
+{text:"The Curious Incident of the Dog in the Night-Time",score:0}]},
+
+{question:"A woman’s identity becomes entangled with the expectations placed upon her in a rigid society.",answers:[
+{text:"The Awakening",score:1},
+{text:"Jane Eyre",score:0},
+{text:"Middlemarch",score:0},
+{text:"Anna Karenina",score:0}]},
+
+{question:"A boy survives in the wilderness, relying on ingenuity and resilience after a disaster.",answers:[
+{text:"Hatchet",score:1},
+{text:"My Side of the Mountain",score:0},
+{text:"Life of Pi",score:0},
+{text:"The Road",score:0}]},
+
+{question:"A young couple’s relationship unfolds over years, shaped by timing, class, and missed opportunities.",answers:[
+{text:"Normal People",score:1},
+{text:"One Day",score:0},
+{text:"Me Before You",score:0},
+{text:"The Light We Lost",score:0}]},
+
+{question:"A man becomes obsessed with recording every detail of his existence, seeking meaning in routine.",answers:[
+{text:"The Mezzanine",score:1},
+{text:"Stoner",score:0},
+{text:"Notes from Underground",score:0},
+{text:"The Stranger",score:0}]},
+
+{question:"A family’s secrets are slowly revealed through shifting timelines and perspectives.",answers:[
+{text:"Little Fires Everywhere",score:0},
+{text:"Everything I Never Told You",score:1},
+{text:"The Nightingale",score:0},
+{text:"Big Little Lies",score:0}]},
+
+{question:"A woman becomes fixated on a couple she watches daily, leading her into a dangerous mystery.",answers:[
+{text:"Gone Girl",score:0},
+{text:"The Girl on the Train",score:1},
+{text:"Sharp Objects",score:0},
+{text:"Before I Go to Sleep",score:0}]},
+
+{question:"A young boy befriends an outcast, learning about cruelty and compassion in the process.",answers:[
+{text:"Of Mice and Men",score:1},
+{text:"To Kill a Mockingbird",score:0},
+{text:"The Outsiders",score:0},
+{text:"A Separate Peace",score:0}]},
+
+{question:"A man reflects on a single day that reveals the quiet disappointments of his life.",answers:[
+{text:"Mrs. Dalloway",score:1},
+{text:"The Hours",score:0},
+{text:"Stoner",score:0},
+{text:"A Day in the Life of Ivan Denisovich",score:0}]},
+
+{question:"A boy is raised in isolation and must confront the outside world and its dangers.",answers:[
+{text:"Room",score:1},
+{text:"The Road",score:0},
+{text:"Life of Pi",score:0},
+{text:"The Giver",score:0}]},
+
+{question:"A woman’s quiet life is disrupted by unexpected inheritance and hidden connections.",answers:[
+{text:"Great Expectations",score:1},
+{text:"Jane Eyre",score:0},
+{text:"Middlemarch",score:0},
+{text:"Wuthering Heights",score:0}]},
+
+{question:"A dystopian regime rewrites history and controls thought, while one man secretly rebels.",answers:[
+{text:"Brave New World",score:0},
+{text:"1984",score:1},
+{text:"Fahrenheit 451",score:0},
+{text:"The Handmaid’s Tale",score:0}]},
+
+{question:"A firefighter begins to question his role in a society where books are outlawed.",answers:[
+{text:"1984",score:0},
+{text:"Fahrenheit 451",score:1},
+{text:"Brave New World",score:0},
+{text:"The Giver",score:0}]},
+
+{question:"A young woman uncovers unsettling truths about her past while returning home.",answers:[
+{text:"Sharp Objects",score:1},
+{text:"Gone Girl",score:0},
+{text:"The Silent Patient",score:0},
+{text:"Big Little Lies",score:0}]},
+
+{question:"A man stranded at sea forms an unexpected bond that helps him survive.",answers:[
+{text:"The Old Man and the Sea",score:0},
+{text:"Life of Pi",score:1},
+{text:"Robinson Crusoe",score:0},
+{text:"Moby-Dick",score:0}]},
+
+{question:"A group of strangers are invited somewhere remote, where they are judged for past actions.",answers:[
+{text:"The Guest List",score:0},
+{text:"And Then There Were None",score:1},
+{text:"The Hunting Party",score:0},
+{text:"Knives Out",score:0}]},
+
+{question:"A woman trapped in a rigid marriage seeks passion and freedom, with tragic consequences.",answers:[
+{text:"Madame Bovary",score:1},
+{text:"Anna Karenina",score:0},
+{text:"The Awakening",score:0},
+{text:"Jane Eyre",score:0}]},
+
+{question:"A fragmented narrative explores trauma, memory, and survival through nonlinear storytelling tied to war and time displacement.",answers:[
+{text:"Catch-22",score:0},
+{text:"Slaughterhouse-Five",score:1},
+{text:"The Things They Carried",score:0},
+{text:"Gravity’s Rainbow",score:0}]},
+
+{question:"An academic’s quiet life unfolds with devastating subtlety, revealing regret, routine, and suppressed longing.",answers:[
+{text:"Stoner",score:1},
+{text:"The Remains of the Day",score:0},
+{text:"A Single Man",score:0},
+{text:"Revolutionary Road",score:0}]},
+
+{question:"A surreal bureaucratic world traps a man in a system that seems both absurd and terrifyingly logical.",answers:[
+{text:"The Trial",score:0},
+{text:"The Castle",score:1},
+{text:"1984",score:0},
+{text:"Brave New World",score:0}]},
+
+{question:"A diplomat reflects on dignity, loyalty, and missed opportunities while serving a declining aristocracy.",answers:[
+{text:"The Remains of the Day",score:1},
+{text:"Brideshead Revisited",score:0},
+{text:"Atonement",score:0},
+{text:"The Go-Between",score:0}]},
+
+{question:"A young boy’s brush with wealth and crime shapes his identity, driven by guilt and a stolen piece of art.",answers:[
+{text:"The Secret History",score:0},
+{text:"The Goldfinch",score:1},
+{text:"Great Expectations",score:0},
+{text:"Less Than Zero",score:0}]},
+
+{question:"A disaffected narrator recounts elite college friendships that spiral into moral decay and violence.",answers:[
+{text:"If We Were Villains",score:0},
+{text:"The Secret History",score:1},
+{text:"The Goldfinch",score:0},
+{text:"Rules of Attraction",score:0}]},
+
+{question:"A man becomes obsessed with a woman he barely knows, constructing meaning from coincidence and longing.",answers:[
+{text:"Norwegian Wood",score:0},
+{text:"Enduring Love",score:1},
+{text:"On Chesil Beach",score:0},
+{text:"The Unbearable Lightness of Being",score:0}]},
+
+{question:"A philosophical exploration of free will and violence unfolds through the lens of a charismatic delinquent.",answers:[
+{text:"Trainspotting",score:0},
+{text:"A Clockwork Orange",score:1},
+{text:"Fight Club",score:0},
+{text:"American Psycho",score:0}]},
+
+{question:"A woman’s life is reconstructed through letters, revealing layers of resilience, abuse, and self-discovery.",answers:[
+{text:"The Color Purple",score:1},
+{text:"Beloved",score:0},
+{text:"Their Eyes Were Watching God",score:0},
+{text:"The Bluest Eye",score:0}]},
+
+{question:"A quiet English village masks deep tensions as social class and repression shape the lives within it.",answers:[
+{text:"Middlemarch",score:1},
+{text:"Wives and Daughters",score:0},
+{text:"North and South",score:0},
+{text:"The Mill on the Floss",score:0}]},
+
+{question:"A man’s obsession with control and identity leads him into increasingly disturbing territory in urban isolation.",answers:[
+{text:"American Psycho",score:1},
+{text:"Fight Club",score:0},
+{text:"Less Than Zero",score:0},
+{text:"The Stranger",score:0}]},
+
+{question:"A child narrator reveals the quiet devastation of family dysfunction and unspoken tragedy.",answers:[
+{text:"Everything I Never Told You",score:1},
+{text:"The Lovely Bones",score:0},
+{text:"Room",score:0},
+{text:"White Oleander",score:0}]},
+
+{question:"A decaying Southern family struggles with pride, loss, and the burden of legacy.",answers:[
+{text:"Absalom, Absalom!",score:0},
+{text:"The Sound and the Fury",score:1},
+{text:"As I Lay Dying",score:0},
+{text:"Light in August",score:0}]},
+
+{question:"A man’s existential detachment shapes his response to violence, society, and judgment.",answers:[
+{text:"The Stranger",score:1},
+{text:"Nausea",score:0},
+{text:"Crime and Punishment",score:0},
+{text:"Notes from Underground",score:0}]},
+
+{question:"A satirical war narrative blends dark humor with nonlinear storytelling and fatalism.",answers:[
+{text:"Catch-22",score:1},
+{text:"Slaughterhouse-Five",score:0},
+{text:"Gravity’s Rainbow",score:0},
+{text:"The Good Soldier Švejk",score:0}]},
+
+{question:"A woman’s past and present intertwine as guilt reshapes multiple lives over decades.",answers:[
+{text:"Atonement",score:1},
+{text:"The English Patient",score:0},
+{text:"Never Let Me Go",score:0},
+{text:"The Hours",score:0}]},
+
+{question:"A repressed butler reflects on a lifetime of service and the cost of emotional restraint.",answers:[
+{text:"The Remains of the Day",score:1},
+{text:"Stoner",score:0},
+{text:"A Single Man",score:0},
+{text:"The Go-Between",score:0}]},
+
+{question:"A dystopian future explores manufactured happiness and the suppression of individuality.",answers:[
+{text:"1984",score:0},
+{text:"Brave New World",score:1},
+{text:"We",score:0},
+{text:"The Giver",score:0}]},
+
+{question:"A haunting narrative examines memory and identity through clones raised for a hidden purpose.",answers:[
+{text:"Never Let Me Go",score:1},
+{text:"Klara and the Sun",score:0},
+{text:"The Handmaid’s Tale",score:0},
+{text:"Station Eleven",score:0}]},
+
+{question:"A sprawling narrative of obsession, paranoia, and entropy unfolds against historical backdrops.",answers:[
+{text:"Gravity’s Rainbow",score:1},
+{text:"Infinite Jest",score:0},
+{text:"White Noise",score:0},
+{text:"Underworld",score:0}]},
+
+{question:"A young woman’s romantic idealism leads her toward disillusionment and self-destruction.",answers:[
+{text:"Anna Karenina",score:0},
+{text:"Madame Bovary",score:1},
+{text:"The Awakening",score:0},
+{text:"Effi Briest",score:0}]},
+
+{question:"A man’s life is defined by his quiet devotion to literature and teaching, despite mediocrity and hardship.",answers:[
+{text:"Stoner",score:1},
+{text:"The Professor",score:0},
+{text:"Lucky Jim",score:0},
+{text:"Disgrace",score:0}]},
+
+{question:"A narrative built around addiction, entertainment, and fractured timelines challenges linear storytelling.",answers:[
+{text:"Infinite Jest",score:1},
+{text:"Gravity’s Rainbow",score:0},
+{text:"White Noise",score:0},
+{text:"House of Leaves",score:0}]},
+
+{question:"A man recalls a childhood summer that shaped his understanding of class, desire, and loss.",answers:[
+{text:"The Go-Between",score:1},
+{text:"Atonement",score:0},
+{text:"Never Let Me Go",score:0},
+{text:"Brideshead Revisited",score:0}]},
+
+{question:"A postmodern narrative blurs reality and text, creating a labyrinthine reading experience.",answers:[
+{text:"House of Leaves",score:1},
+{text:"If on a winter's night a traveler",score:0},
+{text:"Pale Fire",score:0},
+{text:"Infinite Jest",score:0}]},
+
+{question:"A poet’s work becomes inseparable from commentary, creating a layered narrative of obsession.",answers:[
+{text:"Pale Fire",score:1},
+{text:"Lolita",score:0},
+{text:"Ada or Ardor",score:0},
+{text:"The Real Life of Sebastian Knight",score:0}]},
+
+{question:"A man drifts through consumer culture, grappling with identity through anonymous rebellion.",answers:[
+{text:"Fight Club",score:1},
+{text:"American Psycho",score:0},
+{text:"Less Than Zero",score:0},
+{text:"White Noise",score:0}]},
+
+{question:"A professor’s life unravels following scandal, revealing power, shame, and social tensions.",answers:[
+{text:"Disgrace",score:1},
+{text:"The Human Stain",score:0},
+{text:"Stoner",score:0},
+{text:"The Corrections",score:0}]},
+
+{question:"A woman’s fragmented memories reveal a deeply unreliable narrative shaped by trauma.",answers:[
+{text:"The Bell Jar",score:0},
+{text:"Alias Grace",score:1},
+{text:"Sharp Objects",score:0},
+{text:"Rebecca",score:0}]},
+
+{question:"A family saga explores generational conflict, identity, and the weight of expectation.",answers:[
+{text:"The Corrections",score:1},
+{text:"Freedom",score:0},
+{text:"Middlesex",score:0},
+{text:"White Teeth",score:0}]},
+
+{question:"A boy’s coming-of-age is shaped by mentorship, betrayal, and shifting moral ground.",answers:[
+{text:"A Separate Peace",score:1},
+{text:"The Secret History",score:0},
+{text:"Dead Poets Society",score:0},
+{text:"The Goldfinch",score:0}]},
+
+{question:"A surreal journey through memory and identity unfolds in a shifting, dreamlike city.",answers:[
+{text:"Invisible Cities",score:1},
+{text:"The City & the City",score:0},
+{text:"Neverwhere",score:0},
+{text:"Perdido Street Station",score:0}]},
+
+{question:"A man fixates on a lost love, blurring the line between nostalgia and delusion.",answers:[
+{text:"The Great Gatsby",score:1},
+{text:"Norwegian Wood",score:0},
+{text:"On Chesil Beach",score:0},
+{text:"The End of the Affair",score:0}]},
+
+{question:"A dystopian narrative follows women stripped of autonomy in a theocratic regime.",answers:[
+{text:"The Handmaid’s Tale",score:1},
+{text:"The Power",score:0},
+{text:"Vox",score:0},
+{text:"1984",score:0}]},
+
+{question:"A young man’s privileged life masks emotional emptiness and moral ambiguity.",answers:[
+{text:"Less Than Zero",score:1},
+{text:"American Psycho",score:0},
+{text:"The Secret History",score:0},
+{text:"The Goldfinch",score:0}]},
+
+{question:"A man becomes consumed by jealousy, manipulating reality to justify his suspicions.",answers:[
+{text:"Othello",score:0},
+{text:"The End of the Affair",score:1},
+{text:"Rebecca",score:0},
+{text:"Gone Girl",score:0}]},
+
+{question:"A narrative structured around absence explores grief, language, and the limits of storytelling.",answers:[
+{text:"Lincoln in the Bardo",score:1},
+{text:"Cloud Atlas",score:0},
+{text:"The Road",score:0},
+{text:"Beloved",score:0}]},
+
+{question:"A man confronts the randomness of existence after an unexpected act of violence.",answers:[
+{text:"The Stranger",score:1},
+{text:"Nausea",score:0},
+{text:"Disgrace",score:0},
+{text:"Crime and Punishment",score:0}]},
+
+{question:"A woman reflects on her life choices while preparing for a social gathering.",answers:[
+{text:"Mrs. Dalloway",score:1},
+{text:"The Hours",score:0},
+{text:"Atonement",score:0},
+{text:"To the Lighthouse",score:0}]},
+
+{question:"A narrative explores the psychological toll of surveillance and control in modern society.",answers:[
+{text:"White Noise",score:0},
+{text:"1984",score:1},
+{text:"The Circle",score:0},
+{text:"Brave New World",score:0}]},
+
+{question:"A boy’s perspective reveals the quiet devastation of war and displacement.",answers:[
+{text:"The Kite Runner",score:1},
+{text:"A Thousand Splendid Suns",score:0},
+{text:"Life of Pi",score:0},
+{text:"The Book Thief",score:0}]},
+
+{question:"A scientist’s ambition leads to unintended consequences that question ethics and humanity.",answers:[
+{text:"Frankenstein",score:1},
+{text:"Dr. Jekyll and Mr. Hyde",score:0},
+{text:"The Island of Dr. Moreau",score:0},
+{text:"Brave New World",score:0}]},
+
+{question:"A nonlinear narrative connects multiple lives across time through reincarnation and consequence.",answers:[
+{text:"Cloud Atlas",score:1},
+{text:"The Bone Clocks",score:0},
+{text:"Life After Life",score:0},
+{text:"Station Eleven",score:0}]},
+
+{question:"A man reflects on a failed relationship shaped by miscommunication and cultural differences.",answers:[
+{text:"On Chesil Beach",score:1},
+{text:"Normal People",score:0},
+{text:"Norwegian Wood",score:0},
+{text:"The End of the Affair",score:0}]},
+
+{question:"A philosophical narrative explores nausea as a response to existence itself.",answers:[
+{text:"Nausea",score:1},
+{text:"The Stranger",score:0},
+{text:"Notes from Underground",score:0},
+{text:"Being and Nothingness",score:0}]},
+
+{question:"A man’s identity is shaped by secrets, race, and societal perception in academia.",answers:[
+{text:"The Human Stain",score:1},
+{text:"Disgrace",score:0},
+{text:"The Corrections",score:0},
+{text:"American Pastoral",score:0}]},
+
+{question:"A journey through absurdity and performance critiques authority and conformity.",answers:[
+{text:"Waiting for Godot",score:1},
+{text:"Rosencrantz and Guildenstern Are Dead",score:0},
+{text:"Catch-22",score:0},
+{text:"The Trial",score:0}]},
+
+{question:"A woman’s story unfolds through multiple voices, blending history and haunting memory.",answers:[
+{text:"Beloved",score:1},
+{text:"Song of Solomon",score:0},
+{text:"The Bluest Eye",score:0},
+{text:"Homegoing",score:0}]},
+
+{question:"A scientist creates life, only to be horrified by the consequences of playing god as his creation seeks acceptance.",answers:[
+{text:"Dracula",score:0},
+{text:"Frankenstein",score:1},
+{text:"The Invisible Man",score:0},
+{text:"Jekyll and Hyde",score:0}]},
+
+{question:"A teenager writes in her diary while hiding from persecution during a time of war, offering a deeply human perspective on history.",answers:[
+{text:"Night",score:0},
+{text:"The Diary of a Young Girl",score:1},
+{text:"All the Light We Cannot See",score:0},
+{text:"The Book Thief",score:0}]}
+];
+
+// Week logic
+function getWeekNumberMonday() {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+
+  const day = now.getDay();
+  const diffToMonday = (day === 0 ? -6 : 1 - day);
+
+  const monday = new Date(now);
+  monday.setDate(now.getDate() + diffToMonday);
+
+  const startMonday = new Date(2024, 0, 1); // anchor Monday
+
+  const diffWeeks = Math.floor(
+    (monday - startMonday) / (7 * 24 * 60 * 60 * 1000)
+  );
+
+  return diffWeeks;
+}
+
+function generateQuiz() {
+  const form = document.getElementById("quizForm");
+  form.innerHTML = "";
+
+  const week = getWeekNumberMonday();
+  const index = week % questionBank.length;
+
+  let q = questionBank[index];
+
+  let div = document.createElement("div");
+  div.classList.add("question");
+
+  let html = `<p><b>BOTW:</b> ${q.question}</p><div class="answers">`;
+
+  q.answers.forEach((a) => {
+    html += `
+      <label>
+        <input type="radio" name="q0" value="${a.score}">
+        ${a.text}
+      </label>
+    `;
+  });
+
+  html += `</div>`;
+  div.innerHTML = html;
+  form.appendChild(div);
+}
+
+// Save name from popup
+function saveName() {
+  let input = document.getElementById("nameInput").value.trim();
+
+  if (input === "") {
+    alert("Enter your name 🔥");
+    return;
+  }
+
+  userName = input;
+  document.getElementById("nameOverlay").style.display = "none";
+}
+
+// Submit
+function submitQuiz() {
+  let selected = document.querySelector(`input[name="q0"]:checked`);
+  let score = selected ? parseInt(selected.value) : 0;
+
+  let result = score === 1
+    ? `👑 ${userName}, you got it right — Welcome to the Bookish Elite...this week..`
+    : `💔 ${userName}, awesome try, but not quite… be sure to try again next week`;
+
+  document.getElementById("popupResult").innerHTML = result;
+  document.getElementById("popupOverlay").style.display = "flex";
+
+  document.getElementById("mainContent").classList.add("blur");
+  document.getElementById("title").classList.add("blur");
+}
+
+// Embers
+function createEmbers() {
+  const container = document.getElementById("embers");
+
+  for (let i = 0; i < 30; i++) {
+    let ember = document.createElement("div");
+    ember.classList.add("ember");
+
+    ember.style.left = Math.random() * 100 + "vw";
+    ember.style.animationDuration = (6 + Math.random() * 10) + "s";
+
+    container.appendChild(ember);
+  }
+}
+
+generateQuiz();
+createEmbers();
+
+</script>
+
+</body>
+</html>
