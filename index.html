@@ -926,9 +926,24 @@ function submitQuiz() {
   let selected = document.querySelector(`input[name="q0"]:checked`);
   let score = selected ? parseInt(selected.value) : 0;
 
-  let result = score === 1
-    ? `👑 ${userName}, you got it right — Welcome to the Bookish Elite...this week..`
-    : `💔 ${userName}, awesome try, but not quite… be sure to try again next week`;
+  // Get current question again
+  const week = getWeekNumberMonday();
+  const index = week % questionBank.length;
+  let q = questionBank[index];
+
+  // Find correct answer
+  let correctAnswer = q.answers.find(a => a.score === 1).text;
+
+  let result = "";
+
+  if (score === 1) {
+    result = `👑 ${userName}, you got it right — Welcome to the Bookish Elite...this week..`;
+  } else {
+    result = `
+      💔 ${userName}, awesome try, but not quite…<br><br>
+      📖 <b>Correct Answer:</b> ${correctAnswer}
+    `;
+  }
 
   document.getElementById("popupResult").innerHTML = result;
   document.getElementById("popupOverlay").style.display = "flex";
